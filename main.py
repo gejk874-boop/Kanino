@@ -1,10 +1,10 @@
 import logging
 import asyncio
-from aiogram import Bot, Dispatcher, types, executor
-from aiogram.dispatcher.filters import CommandStart
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import CommandStart
 
 # Конфигурация бота
-BOT_TOKEN = "8594982337:AAFkcLhYzCqSj364eNAytMQu_VSINILPvAA"
+BOT_TOKEN = "8594982337:AAFkcLhYzCqSj364eNAytMQu_VSILPvAA"
 ADMIN_IDS = [5000512685, 7741560076, 6986121067]
 
 # Текст сообщений
@@ -26,68 +26,47 @@ logger = logging.getLogger(__name__)
 
 # Инициализация бота и диспетчера
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(bot)
+dp = Dispatcher()
 
-class ApplicationBot:
-    def __init__(self):
-        self.admin_ids = ADMIN_IDS
-    
-    async def send_to_admins(self, message: types.Message):
-        """Отправка анкеты всем администраторам"""
-        application_text = APPLICATION_FORWARD_TEXT.format(
-            username=message.from_user.username or "Нет username",
-            user_id=message.from_user.id,
-            text=message.text
-        )
-        
-        success_sent = 0
-        for admin_id in self.admin_ids:
-            try:
-                await bot.send_message(admin_id, application_text)
-                success_sent += 1
-                logger.info(f"Анкета отправлена администратору {admin_id}")
-            except Exception as e:
-                logger.error(f"Ошибка отправки администратору {admin_id}: {e}")
-        
-        return success_sent
-
-# Создаем экземпляр бота
-app_bot = ApplicationBot()
-
-@dp.message_handler(CommandStart())
+@dp.message(CommandStart())
 async def send_welcome(message: types.Message):
     """Обработчик команды /start"""
     await message.answer(WELCOME_MESSAGE)
     logger.info(f"Пользователь {message.from_user.id} запустил бота")
 
-@dp.message_handler(content_types=types.ContentType.TEXT)
+@dp.message()
 async def handle_application(message: types.Message):
     """Обработчик текстовых сообщений (анкет)"""
     # Пропускаем команды
-    if message.text.startswith('/'):
+    if message.text and message.text.startswith('/'):
         return
     
     # Отправляем анкету администраторам
-    success_count = await app_bot.send_to_admins(message)
+    application_text = APPLICATION_FORWARD_TEXT.format(
+        username=message.from_user.username or "Нет username",
+        user_id=message.from_user.id,
+        text=message.text or "Не текстовое сообщение"
+    )
     
-    if success_count > 0:
+    success_sent = 0
+    for admin_id in ADMIN_IDS:
+        try:
+            await bot.send_message(admin_id, application_text)
+            success_sent += 1
+            logger.info(f"Анкета отправлена администратору {admin_id}")
+        except Exception as e:
+            logger.error(f"Ошибка отправки администратору {admin_id}: {e}")
+    
+    if success_sent > 0:
         await message.answer(APPLICATION_RECEIVED)
         logger.info(f"Анкета от {message.from_user.id} обработана успешно")
     else:
         await message.answer("Произошла ошибка при отправке анкеты. Попробуйте позже.")
         logger.error(f"Не удалось отправить анкету от {message.from_user.id}")
 
-@dp.message_handler(content_types=types.ContentType.ANY)
-async def handle_other_messages(message: types.Message):
-    """Обработчик не текстовых сообщений"""
-    if message.content_type != types.ContentType.TEXT:
-        await message.answer("Пожалуйста, отправьте анкету текстовым сообщением.")
-        logger.info(f"Пользователь {message.from_user.id} отправил не текстовое сообщение: {message.content_type}")
-
-# === ЗАПУСК ДЛЯ BEEHOST ===
 async def main():
     logger.info("✅ Бот инициализирован")
-    logger.info("🤖 Бот запускается на Beehost...")
+    logger.info("🤖 Бот запускается...")
     
     try:
         # Принудительно закрываем ВСЕ предыдущие сессии
@@ -98,7 +77,7 @@ async def main():
         await asyncio.sleep(2)
         
         logger.info("🔄 Запускаем поллинг...")
-        await dp.start_polling()
+        await dp.start_polling(bot)
         
     except Exception as e:
         logger.error(f"❌ Критическая ошибка: {e}")
