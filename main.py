@@ -3,7 +3,7 @@ import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart
 
-# Конфигурация бота - ИСПРАВЛЕННЫЙ ТОКЕН!
+# Конфигурация бота
 BOT_TOKEN = "8594982337:AAFkcLhYzCqSj364eNAytMQu_VSINILPvAA"
 ADMIN_IDS = [5000512685, 7741560076, 6986121067]
 
@@ -31,15 +31,21 @@ dp = Dispatcher()
 @dp.message(CommandStart())
 async def send_welcome(message: types.Message):
     """Обработчик команды /start"""
-    await message.answer(WELCOME_MESSAGE)
-    logger.info(f"Пользователь {message.from_user.id} запустил бота")
+    logger.info(f"Пользователь {message.from_user.id} отправил /start")
+    try:
+        await message.answer(WELCOME_MESSAGE)
+        logger.info(f"Приветственное сообщение отправлено пользователю {message.from_user.id}")
+    except Exception as e:
+        logger.error(f"Ошибка отправки приветствия: {e}")
 
 @dp.message()
-async def handle_application(message: types.Message):
-    """Обработчик текстовых сообщений (анкет)"""
+async def handle_all_messages(message: types.Message):
+    """Обработчик всех сообщений"""
     # Пропускаем команды
     if message.text and message.text.startswith('/'):
         return
+    
+    logger.info(f"Получено сообщение от {message.from_user.id}: {message.text}")
     
     # Отправляем анкету администраторам
     application_text = APPLICATION_FORWARD_TEXT.format(
@@ -57,12 +63,15 @@ async def handle_application(message: types.Message):
         except Exception as e:
             logger.error(f"Ошибка отправки администратору {admin_id}: {e}")
     
-    if success_sent > 0:
-        await message.answer(APPLICATION_RECEIVED)
-        logger.info(f"Анкета от {message.from_user.id} обработана успешно")
-    else:
-        await message.answer("Произошла ошибка при отправке анкеты. Попробуйте позже.")
-        logger.error(f"Не удалось отправить анкету от {message.from_user.id}")
+    # Отправляем подтверждение пользователю
+    try:
+        if success_sent > 0:
+            await message.answer(APPLICATION_RECEIVED)
+            logger.info(f"Анкета от {message.from_user.id} обработана успешно")
+        else:
+            await message.answer("Произошла ошибка при отправке анкеты. Попробуйте позже.")
+    except Exception as e:
+        logger.error(f"Ошибка отправки подтверждения пользователю: {e}")
 
 async def main():
     logger.info("✅ Бот инициализирован")
