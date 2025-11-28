@@ -15,8 +15,6 @@ WELCOME_MESSAGE = (
 
 APPLICATION_RECEIVED = "Ваша анкета принята! Ожидайте ответа."
 
-APPLICATION_FORWARD_TEXT = "Новая анкета от @{username} (ID: {user_id}):\n\n{text}"
-
 # Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
@@ -25,73 +23,57 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Инициализация бота и диспетчера
-bot = Bot(token=BOT_TOKEN)
+bot = Bot(token=BOT_TOKEN, parse_mode=None)
 dp = Dispatcher()
 
 @dp.message(CommandStart())
 async def send_welcome(message: types.Message):
-    """Обработчик команды /start"""
+    """Обработчик команды /start - максимально быстрый"""
+    # Отправляем ответ сразу, не дожидаясь логирования
+    await message.answer(WELCOME_MESSAGE)
     logger.info(f"Пользователь {message.from_user.id} отправил /start")
-    try:
-        await message.answer(WELCOME_MESSAGE)
-        logger.info(f"Приветственное сообщение отправлено пользователю {message.from_user.id}")
-    except Exception as e:
-        logger.error(f"Ошибка отправки приветствия: {e}")
 
 @dp.message()
 async def handle_all_messages(message: types.Message):
-    """Обработчик всех сообщений"""
+    """Обработчик всех сообщений - максимально быстрый"""
     # Пропускаем команды
     if message.text and message.text.startswith('/'):
         return
     
-    logger.info(f"Получено сообщение от {message.from_user.id}: {message.text}")
+    # Сразу отправляем подтверждение пользователю
+    user_response_task = asyncio.create_task(message.answer(APPLICATION_RECEIVED))
     
-    # Отправляем анкету администраторам
-    application_text = APPLICATION_FORWARD_TEXT.format(
-        username=message.from_user.username or "Нет username",
-        user_id=message.from_user.id,
-        text=message.text or "Не текстовое сообщение"
-    )
+    # Параллельно отправляем администраторам
+    admin_tasks = []
+    application_text = f"Новая анкета от @{message.from_user.username or 'Нет username'} (ID: {message.from_user.id}):\n\n{message.text or 'Не текстовое сообщение'}"
     
-    success_sent = 0
     for admin_id in ADMIN_IDS:
-        try:
-            await bot.send_message(admin_id, application_text)
-            success_sent += 1
-            logger.info(f"Анкета отправлена администратору {admin_id}")
-        except Exception as e:
-            logger.error(f"Ошибка отправки администратору {admin_id}: {e}")
+        task = asyncio.create_task(bot.send_message(admin_id, application_text))
+        admin_tasks.append(task)
     
-    # Отправляем подтверждение пользователю
+    # Ждем завершения всех задач
     try:
-        if success_sent > 0:
-            await message.answer(APPLICATION_RECEIVED)
-            logger.info(f"Анкета от {message.from_user.id} обработана успешно")
-        else:
-            await message.answer("Произошла ошибка при отправке анкеты. Попробуйте позже.")
+        await user_response_task
+        await asyncio.gather(*admin_tasks, return_exceptions=True)
+        logger.info(f"Анкета от {message.from_user.id} обработана")
     except Exception as e:
-        logger.error(f"Ошибка отправки подтверждения пользователю: {e}")
+        logger.error(f"Ошибка обработки анкеты: {e}")
 
 async def main():
-    logger.info("✅ Бот инициализирован")
     logger.info("🤖 Бот запускается...")
     
     try:
-        # Принудительно закрываем ВСЕ предыдущие сессии
+        # Быстрая инициализация без долгих ожиданий
         await bot.delete_webhook(drop_pending_updates=True)
-        logger.info("✅ Все предыдущие сессии завершены")
+        logger.info("✅ Бот готов к работе")
         
-        # Ждем немного чтобы убедиться что старые процессы завершились
-        await asyncio.sleep(2)
-        
-        logger.info("🔄 Запускаем поллинг...")
-        await dp.start_polling(bot)
+        # Запускаем поллинг сразу
+        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
         
     except Exception as e:
-        logger.error(f"❌ Критическая ошибка: {e}")
-        # Перезапуск через 10 секунд
-        await asyncio.sleep(10)
+        logger.error(f"❌ Ошибка: {e}")
+        # Быстрый перезапуск через 5 секунд
+        await asyncio.sleep(5)
         await main()
 
 if __name__ == "__main__":
@@ -100,4 +82,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logger.info("⏹️ Бот остановлен")
     except Exception as e:
-        logger.error(f"❌ Фатальная ошибка: {e}")
+        logger.error(f"❌ Фатальная ошибка: {e}")        
