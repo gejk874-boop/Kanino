@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart
 
 # Конфигурация бота
-BOT_TOKEN = "8594982337:AAFkcLhYzCqSj364eNAytMQu_VSINILPvAA"
+BOT_TOKEN = "8610062691:AAEsKPAEiVwKDjZYu3BDlxUBJIIFhq6WDmw"
 ADMIN_IDS = [5000512685, 7741560076, 6986121067]
 
 # Текст сообщений
