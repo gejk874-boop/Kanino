@@ -4,13 +4,12 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart
 
 # Конфигурация бота
-BOT_TOKEN = "8610062691:AAEsKPAEiVwKDjZYu3BDlxUBJIIFhq6WDmw"
-ADMIN_IDS = [5000512685, 7741560076, 6986121067]
+BOT_TOKEN = "8981394431:AAFjMHzcXgKrHp7Dum5xNaquDFgvc4HWaV0"
+ADMIN_IDS = [7750179734,8395870342]
 
 # Текст сообщений
 WELCOME_MESSAGE = (
-    "Здравия, вас приветствует бот для приёма анкет в клан «A terrible death.»\n\n"
-    "Пришлите пожалуйста анкету, одним сообщением."
+    " Тут твой текст, который ты скажишь"
 )
 
 APPLICATION_RECEIVED = "Ваша анкета принята! Ожидайте ответа."
